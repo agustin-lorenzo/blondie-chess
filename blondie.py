@@ -7,10 +7,22 @@ import pickle
 import os
 import pandas as pd
 
+def gameOver(board):
+    '''
+    Helper function that returns whether or not a game is over from a given board
+    '''
+    return (board.is_checkmate()
+            or board.is_stalemate()
+            or board.is_insufficient_material())
+
 class Blondie(network.Network):
 
     def minimax(self, board, player, depth=4):
         if depth == 0:
+            if board.is_checkmate():
+                return math.inf * -player, None
+            if board.is_stalemate() or board.is_insufficient_material():
+                return 0
             return self.evaluate(board), None
 
         bestMove = None
@@ -29,8 +41,8 @@ class Blondie(network.Network):
                     bestScore = score
                     bestMove = move
         if bestMove == None:
-            print("Board: ", board)
-            print("Player: ", player)
+            legal_moves = list(board.legal_moves)
+            bestMove = random.choice(legal_moves)
         return bestScore, bestMove
                     
 
@@ -44,22 +56,22 @@ class Blondie(network.Network):
 
 def playGame(player1, player2, depth, alphabeta=False):
     board = chess.Board()
+    current_player = 1
     
-    # Randomly choose which player starts
-    current_player = -1
+    # Determine if two players are stuck in a loop
+    player1Prev = [None, None]
+    player2Prev = [None, None]
+    inCycle = False
+    cycleCounter = 0
     
-    while not (board.is_checkmate()
-               or board.is_stalemate()
-               or board.is_insufficient_material()):
+    while not inCycle and not (gameOver(board)):
         if current_player == 1:
             if alphabeta:
                 _, player1Move = player1.alphabeta(board, 1, depth)
             else:
                 _, player1Move = player1.minimax(board, 1, depth)
             board.push(player1Move)
-            if  (board.is_checkmate()
-                 or board.is_stalemate()
-                 or board.is_insufficient_material()):
+            if  (gameOver(board)):
                 return 1
             current_player = -1
             
@@ -69,17 +81,29 @@ def playGame(player1, player2, depth, alphabeta=False):
             else:
                 _, player2Move = player2.minimax(board, -1, depth)
             board.push(player2Move)
-            if  (board.is_checkmate()
-                 or board.is_stalemate()
-                 or board.is_insufficient_material()):
+            
+            # check for cycle
+            if player1Move == player1Prev[0] and player2Move == player2Prev[0]:
+                cycleCounter += 1
+            if cycleCounter == 2:
                 return 0
-            if  (board.is_checkmate()
-                 or board.is_stalemate()
-                 or board.is_insufficient_material()):
+            else:
+                player1Prev[0] = player1Prev[1]
+                player1Prev[1] = player1Move
+                player2Prev[0] = player2Prev[1]
+                player2Prev[1] = player2Move
+                
+            if  (gameOver(board)):
                 return -1
             current_player = 1
+            
         os.system('clear')
         print(board)
+        print("Cycle counter: ", cycleCounter)
+        print("\nPlayer 1 last: ", player1Prev[1])
+        print("Player 1 second to last: ", player1Prev[0])
+        print("\nPlayer 2 last: ", player2Prev[1])
+        print("Player 2 second to last: ", player2Prev[0])
     return 0
 
 

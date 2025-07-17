@@ -18,16 +18,16 @@ def gameOver(board):
 class Blondie(network.Network):
 
     def minimax(self, board, player, depth=4):
+        if board.is_checkmate():
+            return math.inf * -player, None
+        if board.is_stalemate() or board.is_insufficient_material():
+            return 0
         if depth == 0:
-            if board.is_checkmate():
-                return math.inf * -player, None
-            if board.is_stalemate() or board.is_insufficient_material():
-                return 0
             return self.evaluate(board), None
 
         bestMove = None
         bestScore = math.inf * -player # maximizing for white (player = 1), minimizing for black (player = 0)
-        
+
         for move in board.legal_moves:
             boardCopy = copy.deepcopy(board)
             boardCopy.push(move)
@@ -40,7 +40,12 @@ class Blondie(network.Network):
                 if score < bestScore:
                     bestScore = score
                     bestMove = move
+                    
         if bestMove == None:
+            print(board.fen())
+            print("PLAYER: ", player)
+            print(board.legal_moves)
+            print("DEPTH: ", depth)
             legal_moves = list(board.legal_moves)
             bestMove = random.choice(legal_moves)
         return bestScore, bestMove
@@ -50,6 +55,41 @@ class Blondie(network.Network):
 
     def alphabeta(self, board, player, depth=7, alpha=-math.inf, beta=math.inf):
         # TODO: adapt previous alphabeta function for chess library
+        if board.is_checkmate():
+            return math.inf * -player, None
+        if board.is_stalemate() or board.is_insufficient_material():
+            return 0
+        if depth == 0:
+            return self.evaluate(board), None
+
+        bestMove = None
+        bestScore = math.inf * -player # maximizing for white (player = 1), minimizing for black (player = 0)
+        
+        if player == 1:
+            for move in board.legal_moves:
+                boardCopy = copy.deepcopy(board)
+                boardCopy.push(move)
+                score, _ = self.alphabeta(boardCopy, -player, depth-1, alpha, beta)
+                bestScore = max(bestScore, score)
+                if score >= beta:
+                    break
+                if score > alpha:
+                    alpha = score
+                    bestMove = move
+            return bestMove, score
+        
+        else:
+            for move in board.legal_moves:
+                boardCopy = copy.deepcopy(board)
+                boardCopy.push(move)
+                score, _ = self.alphabeta(boardCopy, -player, depth-1, alpha, beta)
+                bestScore = max(bestScore, score)
+                if score <= alpha:
+                    break
+                if score < beta:
+                    beta = score
+                    bestMove = move
+            return bestMove, score
         return
 
 
@@ -64,7 +104,7 @@ def playGame(player1, player2, depth, alphabeta=False):
     inCycle = False
     cycleCounter = 0
     
-    while not inCycle and not (gameOver(board)):
+    while not inCycle and not gameOver(board):
         if current_player == 1:
             if alphabeta:
                 _, player1Move = player1.alphabeta(board, 1, depth)
